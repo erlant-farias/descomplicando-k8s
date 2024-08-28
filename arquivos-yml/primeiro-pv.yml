@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata: 
+  name: primeiro-pv
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes: 
+  - ReadWriteMany
+#  - ReadWriteOnce (Apenas um nó pode escrever)
+#  - ReadOnlyMany (Varios podem montar como leitura)
+  persistentVolumeReclaimPolicy: Retain
+  nfs:
+    path: /opt/dados
+    server: 172.31.53.159
+    readOnly: false
+    

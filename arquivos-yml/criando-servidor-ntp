@@ -1,0 +1,146 @@
+1. Criar uma Imagem Docker para NTP
+
+Primeiro, criamos uma imagem Docker contendo Alpine Linux e ntpd.
+
+Crie um Dockerfile:
+
+```bash
+# Dockerfile
+
+
+FROM alpine:latest
+
+RUN apk update && apk add openntpd tzdata
+
+# Set the timezone
+RUN cp /usr/share/zoneinfo/America/Belem /etc/localtime && echo "America/Belem" > /etc/timezone
+
+COPY ntpd.conf /etc/ntpd.conf
+
+EXPOSE 123/udp
+
+CMD ["ntpd", "-d", "-f", "/etc/ntpd.conf"]
+
+
+```
+
+Crie o arquivo de configuração do NTP (ntpd.conf):
+
+```bash
+# ntpd.conf
+
+# Use public NTP servers from the pool.ntp.org project.
+# Please consider joining the pool (http://www.pool.ntp.org/join.html).
+servers pool.ntp.org
+
+# Allow NTP clients access from the local network.
+# adjust the range as needed
+restrict default kod nomodify notrap nopeer noquery
+restrict 127.0.0.1
+restrict ::1
+
+```
+
+Construa e publique a imagem Docker:
+
+```bash
+docker build -t erlantfarias/ntpd-alpine:1.0.0 .
+docker push erlantfarias/ntpd-alpine:1.0.0
+
+```
+
+Criar Manifests para Kubernetes
+
+Vamos criar os manifestos necessários para Kubernetes.
+
+Deployment
+
+```bash
+# deployment.yaml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ntpd-deployment
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: ntpd
+  template:
+    metadata:
+      labels:
+        app: ntpd
+    spec:
+      containers:
+      - name: ntpd
+        image: erlantfarias/ntpd-alpine
+        ports:
+        - containerPort: 123
+          protocol: UDP
+```
+
+Service
+
+```bash
+# service.yaml
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: ntpd-service
+spec:
+  selector:
+    app: ntpd
+  ports:
+  - protocol: UDP
+    port: 123
+    targetPort: 123
+```
+Aplicar os Manifests no Kubernetes
+
+```bash
+kubectl apply -f deployment.yaml
+kubectl apply -f service.yaml
+```
+
+4. Verificar e Testar a Implantação
+
+Verifique se os pods estão em execução:
+
+```bash
+kubectl get pods
+```
+
+Verifique o serviço e obtenha o IP:
+
+```bash
+kubectl get services
+```
+
+ Testar o Servidor NTP
+
+Você pode testar o servidor NTP de um cliente NTP para garantir que ele esteja funcionando corretamente. Em uma máquina cliente, você pode usar o comando ntpdate para sincronizar o tempo com o servidor NTP configurado:
+
+```bash
+ntpdate -q <service-ip>
+```
+
+
+Verificar a Configuração do Timezone
+
+Para verificar se o timezone está configurado corretamente no contêiner, você pode acessar o pod e verificar o timezone:
+
+Encontre o nome do pod:
+
+```bash
+kubectl get pods
+```
+
+Acesse o pod:
+
+```bash
+kubectl exec -it <pod-name> -- sh
+
+date
+```

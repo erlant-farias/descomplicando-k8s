@@ -1,0 +1,429 @@
+Day 01 - Introdução 
+kubernetes.io 
+12 factors
+
+-----------------------------------------------------------
+Master (control plane)
+kube api -> etcd
+scheduler; proxy.
+kubelet
+
+Worker
+kubelet
+kubeproxy
+
+-----------------------------------------------------------
+Pod
+A menor unidade do kubernetes (compartilha namespace {mesmo ip por exemplo})
+
+-----------------------------------------------------------
+Controller 
+"Camadas" 
+Deployment, Replicaset, Ingress
+
+-----------------------------------------------------------
+Deployment 
+É onde esta as especificações
+
+-----------------------------------------------------------
+Service
+Componente que expoe os serviços
+
+-----------------------------------------------------------
+Replicaset (modo replicado?)
+
+-----------------------------------------------------------
+Deamonset (modo global?)
+
+
+-----------------------------------------------------------
+Ingress
+-----------------------------------------------------------
+Taints: Regras (NoSchedule, NoExecute)
+-----------------------------------------------------------
+Liberação de portas:
+
+-----------------------------------------------------------
+(Instalar o bash completion apt install -y bash-completion)
+
+kubectl completion bash > /etc/basch_completion.d/kubectl
+echo "source <(kubectl completion bash)" >> /root/.bashrc
+
+-----------------------------------------------------------
+Comandos:
+
+kubectl get nodes
+kubectl get pods -n kube-system
+kubectl describe
+kubectl describe nodes 
+kubectl describe endpoints nome-do-svc
+
+
+Para mostrar novamente o token de join no cluster:
+kubeadm token create --print-join-command
+
+kubectl describe pods -n kube-system nome-do-pod
+kubectl get pods --all-namespaces -o wide
+kubectl get namespaces 
+kubectl describe namespaces nome-do-namespace
+kubectl get deployment
+kubectl get replicaset
+kubectl get services
+kubectl get endpoints
+kubectl create namespace giropops
+
+kubectl run nginx --image=nginx 
+kubectl delete pods nginx
+-----------------------------------------------------------
+Formas de criar template:
+
+kubectl get pods nginx -o yaml 
+kubectl run nginx --image=nginx --dry-run=client -o yaml
+
+
+-----------------------------------------------------------
+
+
+kubectl create -f meu_primeiro_pod.yml 
+kubectl delete -f meu_primeiro_pod.yml 
+
+
+-----------------------------------------------------------
+Informações de cpu da vm:
+cat /proc/cpuinfo
+Informações de ram da vm:
+free -m 
+
+-----------------------------------------------------------
+Caso seja outra distribuição:
+ É necessario criar um arquivo de configurações.
+path: /etc/modules-load.d/k8s.conf 
+
+br_netfilter
+ip_vs_rr
+ip_vs_wrr 
+ip_vs_sch
+nf_conntrack_ipv4
+ip_vs
+
+
+-----------------------------------------------------------
+                        controller         controller 
+service  ->   deployment     ->    replicaset   ->   pod
+         ->   deployment2    ->    replicaset2  ->   pod2
+
+-----------------------------------------------------------
+kubectl describe replicaset nome-do-replicaset
+
+kubectl scale --replicas=10 deployment nginx
+
+kubectl run nginx --image=nginx --port=80
+kubectl run nginx2 --image=nginx
+
+kubectl create -f meu_primeiro_deployment.yml
+kubectl delete -f meu_primeiro_deployment.yml
+
+criar service:
+kubectl expose deployment nginx --port 80
+kubectl delete service nginx 
+kubectl expose pod meu-nginx --port 80
+
+kubectl expose deployment nginx --type=NodePort --port 80
+kubectl expose deployment nginx --type=LoadBalancer --port 80
+kubectl get services
+
+
+
+-----------------------------------------------------------
+fim da day01
+faltou assistir as aulas ao vivo e as duas primeiras.
+
+
+-----------------------------------------------------------
+day02 - Services
+
+Namespaces (pode ser definido quotas)
+isolamento da aplicação 
+
+Armazenamento (Driver - share nfs)
+monta o armazenamento quando um pod muda de nó
+
+kubeapi - server 
+(cerebro - conversa com os nós) somente ele conversa com o etcd
+
+scheduler - escolhe onde o pod vai ser colocado
+
+kube controller manager -  conversa com o api-server
+
+kubeproxy - expoe as portas 
+
+kubelet - agente
+
+supervisord - verifica se o kubelet e o docker esta rodando
+
+
+metallb (faz com que o baremetal disponha ip externo para o load balancer)
+
+CNI (container network interface) - plugin para gerenciamento da rede (rede funcione)
+diferente do swarm no k8s não temos nat, é como se cada pod fosse uma vm, tivesse seu propio ip
+
+PodNetwork (rede overlay)
+weavenet - addons (atua na camada 2)
+calico- addons (atua na camada 3)
+kubenet (network provide default)
+
+
+-----------------------------------------------------------
+kubectl exec -ti meu-nginx bash 
+
+cd /usr/share/nginx/html/
+cat /proc/cpuinfo
+-----------------------------------------------------------
+
+kubectl create deployment --image=nginx nginx-tosko
+kubectl get deployments.apps nginx-tosko -o wide
+kubectl get pods nginx-tosko-hash -o wide
+kubectl scale deployment --replicas=3 nginx-tosko 
+kubectl expose deployment nginx-tosko --port 80
+
+-----------------------------------------------------------
+Limitando os recursos:
+
+kubectl create deployment --image=nginx nginx-tosko
+kubectl scale deployment --replicas=3 nginx-tosko 
+kubectl get deployment nginx -o yaml > deployment-limitado.yaml 
+
+-------------------------
+Stress
+
+kubectl exec -ti nginx-tosko-hash bash 
+  apt-get update -y
+  apt-get install -y stress 
+  stress --vm 1 --vm-bytes 128M --cpu 1
+  stress --vm 1 --vm-bytes 256M --cpu 1
+
+-------------------------
+Limitando Namespaces
+kubectl create -f limitando-recursos.yml  -n nome-do-namespace
+kubectl get limitranges -n nome-do-namespace 
+kubectl get limitranges --all-namespaces 
+kubectl describe limitranges -n nome-do-namespace limitado-recursos
+kubectl create -f pod-limitado.yml -n nome-do-namespace
+kubectl describe pods limit-pod -n nome-do-namespace
+
+-------------------------
+Kubectl taint 
+Adiciona propriedades ao nó do cluster para impedir que os pods sejam alocados em nós inapropriados.
+-> NoSchedule
+-> NoExecute
+
+kubectl taint node nome-do-node key1=value1:NoSchedule
+kubectl taint node nome-do-node key1=value1:NoExecute
+kubectl taint node --all key1:NoSchedule
+
+Retirar o taint:
+kubectl taint node nome-do-node nome-do-taint/xxxx:NoSchedule-
+kubectl taint node --all key1:NoSchedule-
+
+
+kubectl cordon nome-do-no (desabilita o scheduler do nó "manutenção")
+kubectl uncordon nome-do-no
+
+---------------------------------------------------------------
+Day03
+Replicaset - Label - Node 
+
+kubectl label nodes nome-do-node disk=SSD 
+kubectl label nodes nome-do-node2 disk=HDD
+kubectl label nodes nome-do-node --list 
+kubectl label nodes nome-do-node2 disk=SDD --overwrite
+
+Node Selector
+
+kubectl label nodes no1 dc=NL 
+kubectl label nodes no2 dc=UK
+
+kubectl edit deploy terceiro-deployment
+
+Remover Labels:
+kubectl label nodes dc- --all 
+
+---------------------------------------------------------------
+Replicaset (apenas para fins de estudos)
+
+kubectl get replicasets
+kubectl get ep  | kubectl get endpoints
+kubectl describe rs replica-set-primeiro 
+kubectl edit rs replica-set-primeiro 
+kubectl get pods -L system
+---------------------------------------------------------------
+Daemonset (quando precisa que o pod rode em todos os nós do cluster)
+exexplo (prometheus-exporter)
+
+kubectl get ds 
+kubectl get daemonsets
+kubectl set image ds nome-do-daemonset nginx=nginx:1.15.0
+
+---------------------------------------------------------------
+Rollout e Rollbacks
+
+kubectl rollout history daemonset daemon-set-primeiro 
+kubectl rollout history daemonset daemon-set-primeiro --revision=1
+kubectl rollout history daemonset daemon-set-primeiro --revision=2
+
+kubectl rollout undo daemon-set-primeiro --to-revision=1
+
+kubectl rollout status deployment giropops-v2
+---------------------------------------------------------------
+Day04 - Volume
+emptydir (criado vazio junto com o pod, sem persistencia de dados)
+
+Um PersistentVolume (PV) é uma parte do armazenamento dentro do cluster que tenha sido provisionada por um administrador, ou dinamicamente utilizando Classes de Armazenamento. Isso é um recurso dentro do cluster da mesma forma que um nó também é. PVs são plugins de volume da mesma forma que Volumes, porém eles têm um ciclo de vida independente de qualquer Pod que utilize um PV. Essa API tem por objetivo mostrar os detalhes da implementação do armazenamento, seja ele NFS, iSCSI, ou um armazenamento específico de um provedor de cloud pública.
+
+Uma PersistentVolumeClaim (PVC) é uma requisição para armazenamento por um usuário. É similar a um Pod. Pods utilizam recursos do nó e PVCs utilizam recursos do PV. Pods podem solicitar níveis específicos de recursos (CPU e Memória). Claims podem solicitar tamanho e modos de acesso específicos (exemplo: montagem como ReadWriteOnce, ReadOnlyMany ou ReadWriteMany, veja Modos de Acesso).
+
+apt install nfs-kernel-server 
+mkdir /opt/dados 
+chmod 1777 /opt/dados 
+vim /etc/exports
+exportfs -ar 
+
+
+persistentVolumeReclaimPolicy: 
+- Retain
+- Delete 
+- Recycle
+
+kubectl create -f primeiro-pv.yml 
+kubectl describe pv primeiro-pv 
+
+kubectl create -f primeiro-pvc.yml 
+kubectl describe pvc primeiro-pvc 
+kubectl get pv
+
+
+kubectl create -f nfs-pv.yml 
+kubectl describe deployments nginx
+
+kubectl exec -ti nginx-xxxxxx -- bash
+---------------------------------------------------------------
+
+cronjobs (crontab):
+kubectl create -f primeiro-cronjob.yml
+kubectl get cronjobs.batch
+kubectl get jobs --watch
+kubectl delete cronjobs.batch giropops-cron 
+---------------------------------------------------------------
+
+Secrets:
+
+echo -n "giropops strigus girus" > secret.txt
+
+kubectl create secret generic my-secret --from-file=secret.txt 
+kubectl get secrets 
+kubectl describe secrets my-secret 
+kubectl get secrets my-secret -o yaml 
+
+descriptografar:
+
+echo 'hash' | base64 --decode 
+
+criptografar:
+echo -n 'admin' | base64
+echo -n '1f2d1e2e67df' | base64
+
+---------------------------------------------------------------
+
+Config Maps:
+
+mkdir frutas
+echo amarela > frutas/banana
+echo vermelho > frutas/morango
+echo verde > frutas/limao 
+echo "verde e vermelho" > frutas/melancia
+echo kiwi > predileta
+
+kubectl configmap cores-frutas --from-literal uva-roxa --from-file=predileta --from-file=frutas/ 
+
+---------------------------------------------------------------
+
+RBAC (Permissões)
+
+kubectl create serviceaccount nome-usuario
+kubectl get serviceaccounts
+kubectl describe serviceaccounts nome-usuario
+kubectl get clusterrole
+kubectl describe clusterrole cluster-admin 
+kubectl describe clusterrole view
+kubectl get clusterrolebindings.rbac.authorization.k8s.io
+kubectl describe clusterrolebindings.rbac.authorization.k8s.io cluster-admin
+kubectl create clusterrolebinding nome-da-role --serviceaccount=default: nome-usuario --clusterrole=cluster-admin
+
+kubectl create -f admin-user.yml
+kubectl get serviceaccounts -n kube-system
+---------------------------------------------------------------
+
+Helm 
+
+No ubuntu: snap install helm --classic
+
+
+curl https://baltocdn.com/helm/signing.asc | gpg --dearmor | sudo tee /usr/share/keyrings/helm.gpg > /dev/null
+sudo apt-get install apt-transport-https --yes
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/helm.gpg] https://baltocdn.com/helm/stable/debian/ all main" | sudo tee /etc/apt/sources.list.d/helm-stable-debian.list
+sudo apt-get update
+sudo apt-get install helm
+
+
+Patch para que o helm funcione (por conta do RBAC)
+kubectl create serviceaccount --namespace=kube-system tiller
+kubectl create clusterrolebinding tiller-cluster-role --clusterrole cluster-admin --serviceaccount=kube-system:tiller 
+kubectl get clusterrolebindings.rbac.authorization.k8s.io
+
+kubectl patch deploy -n kube-system tiller-deploy -p '{"spec":{"template":{"spec":{"serviceAccount":"tiller"}}}}'
+
+helm list 
+helm search grafana
+
+kubectl create namespace monitoring
+helm install --namespace=monitoring --name=prometheus --version=7.0.0 --set alertmanager.persistentVolume.enabled=false,server.persistentVolume.enabled=false stable/prometheus
+helm install --namespace=monitoring --name=grafana --version=1.12.0 --set=adminUser=admin,adminPassword=admin,service.type=NodePort stable/grafana
+
+kubectl get services -n monitoring
+
+kubectl edit service -n monitoring  prometheus-server
+
+ -> NodePort
+
+Pendente Aula-ao-Vivo F61
+
+---------------------------------------------------------------
+
+Day05
+
+Ingress - Rotas
+
+kubectl create -f app1.yml
+kubectl create -f app2.yml
+kubectl create -f svc-app1.yml 
+kubectl create -f svc-app2.yml 
+
+
+kubectl get deploy,svc,po,ep 
+
+kubectl create namespace ingress 
+kubectl create -f default-backend.yml -n ingress 
+kubectl create -f default-backend-service.yml -n ingress 
+Criar o RBAC
+
+kubectl create -f nginx-ingress-controller-config-map.yml -n ingress
+kubectl get configmaps -n ingress
+
+kubectl create -f app-ingress.yml
+kubectl get ingress 
+kubectl describe ingress app-ingress
+
+---------------------------------------------------------------
+
+Day06 - EKS
+f70
